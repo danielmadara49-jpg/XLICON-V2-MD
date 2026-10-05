@@ -18,10 +18,8 @@ module.exports = {
                 );
             }
 
-            const groupMetadata = m.groupMetadata;
-
-            const participants = Array.isArray(groupMetadata?.participants)
-                ? groupMetadata.participants
+            const participants = Array.isArray(m.groupMetadata?.participants)
+                ? m.groupMetadata.participants
                 : [];
 
             if (!participants.length) {
@@ -30,42 +28,32 @@ module.exports = {
                 );
             }
 
-            let targetJid = null;
             let targetParticipant = null;
 
             const mentionedJid =
-                m.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+                m.message?.extendedTextMessage?.contextInfo?.mentionedJid ||
+                m.msg?.contextInfo?.mentionedJid;
 
-            if (mentionedJid?.length) {
+            if (m.quoted?.key?.participant) {
+                const quotedParticipant = m.quoted.key.participant;
+
+                targetParticipant = participants.find(
+                    p => p.id === quotedParticipant
+                );
+            } else if (mentionedJid?.length) {
                 const mentioned = mentionedJid[0];
 
                 targetParticipant = participants.find(
-                    p => p.id === mentioned || p.phoneNumber === mentioned
-                );
-
-                if (targetParticipant) {
-                    targetJid =
-                        targetParticipant.phoneNumber ||
-                        targetParticipant.id;
-                }
-            } else if (m.quoted) {
-                const quotedSender = m.quoted.sender;
-
-                targetParticipant = participants.find(
                     p =>
-                        p.id === quotedSender ||
-                        p.phoneNumber === quotedSender
+                        p.id === mentioned ||
+                        p.phoneNumber === mentioned
                 );
-
-                if (targetParticipant) {
-                    targetJid =
-                        targetParticipant.phoneNumber ||
-                        targetParticipant.id;
-                } else {
-                    targetJid = quotedSender;
-                }
             } else if (args?.[0]) {
-                const input = args[0].replace(/^@/, '').trim();
+                const input = args[0]
+                    .replace(/^@/, '')
+                    .trim();
+
+                const cleanNumber = input.replace(/[^0-9]/g, '');
 
                 targetParticipant = participants.find(p => {
                     const id = p.id?.split('@')[0];
@@ -74,34 +62,20 @@ module.exports = {
                     return id === input || phone === input;
                 });
 
-                if (targetParticipant) {
-                    targetJid =
-                        targetParticipant.phoneNumber ||
-                        targetParticipant.id;
-                } else {
-                    const cleanNumber = input.replace(/[^0-9]/g, '');
+                if (!targetParticipant && cleanNumber.length >= 7) {
+                    targetParticipant = participants.find(p => {
+                        const id = p.id?.split('@')[0];
+                        const phone = p.phoneNumber?.split('@')[0];
 
-                    if (cleanNumber.length >= 7 && cleanNumber.length <= 15) {
-                        targetJid = `${cleanNumber}@s.whatsapp.net`;
-
-                        targetParticipant = participants.find(
-                            p =>
-                                p.phoneNumber === targetJid ||
-                                p.id === targetJid
+                        return (
+                            id === cleanNumber ||
+                            phone === cleanNumber
                         );
-                    }
+                    });
                 }
             } else {
                 return await m.reply(
                     'ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ, ᴛᴀɢ ᴀ ᴜsᴇʀ, ᴏʀ ᴘʀᴏᴠɪᴅᴇ ᴀ ɴᴜᴍʙᴇʀ ᴏʀ ʟɪᴅ ᴛᴏ ᴋɪᴄᴋ.'
-                );
-            }
-
-            if (!targetParticipant && targetJid) {
-                targetParticipant = participants.find(
-                    p =>
-                        p.id === targetJid ||
-                        p.phoneNumber === targetJid
                 );
             }
 
@@ -111,13 +85,17 @@ module.exports = {
                 );
             }
 
-            targetJid =
-                targetParticipant.phoneNumber ||
-                targetParticipant.id;
+            const targetJid = targetParticipant.id;
+
+            if (!targetJid) {
+                return await m.reply(
+                    'ᴄᴏᴜʟᴅ ɴᴏᴛ ʀᴇsᴏʟᴠᴇ ᴛʜᴇ ᴜsᴇʀ ɪᴅᴇɴᴛɪᴛʏ.'
+                );
+            }
 
             const targetNumber =
                 targetParticipant.phoneNumber?.split('@')[0] ||
-                targetParticipant.id?.split('@')[0];
+                targetJid.split('@')[0];
 
             const owners = Array.isArray(global.owner)
                 ? global.owner
@@ -127,7 +105,10 @@ module.exports = {
                 const ownerNumber = String(owner)
                     .replace(/[^0-9]/g, '');
 
-                return ownerNumber && ownerNumber === targetNumber;
+                return (
+                    ownerNumber &&
+                    ownerNumber === targetNumber
+                );
             });
 
             if (isBotOwner) {
@@ -138,13 +119,19 @@ module.exports = {
 
             const senderJid = m.sender;
 
-            const senderBase =
-                senderJid?.split(':')[0]?.split('@')[0];
+            const senderBase = senderJid
+                ?.split(':')[0]
+                ?.split('@')[0];
 
-            const targetBase =
-                targetJid?.split(':')[0]?.split('@')[0];
+            const targetBase = targetJid
+                ?.split(':')[0]
+                ?.split('@')[0];
 
-            if (senderBase && targetBase && senderBase === targetBase) {
+            if (
+                senderBase &&
+                targetBase &&
+                senderBase === targetBase
+            ) {
                 return await m.reply(
                     'ʏᴏᴜ ᴄᴀɴɴᴏᴛ ᴋɪᴄᴋ ʏᴏᴜʀsᴇʟꜰ.'
                 );
@@ -152,8 +139,9 @@ module.exports = {
 
             const botJid = sock.user?.id;
 
-            const botBase =
-                botJid?.split(':')[0]?.split('@')[0];
+            const botBase = botJid
+                ?.split(':')[0]
+                ?.split('@')[0];
 
             if (
                 targetBase &&
@@ -196,7 +184,11 @@ module.exports = {
                 );
             }
 
-            if (err?.message?.includes('text.match is not a function')) {
+            if (
+                err?.message?.includes(
+                    'text.match is not a function'
+                )
+            ) {
                 console.log(
                     'Kick succeeded but reply failed due to formatting'
                 );

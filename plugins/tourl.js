@@ -1,5 +1,4 @@
 const axios = require('axios');
-const FormData = require('form-data');
 
 module.exports = {
     name: 'tourl',
@@ -37,29 +36,12 @@ module.exports = {
                 throw new Error('Failed to download quoted file');
             }
 
-            let ext = mime.split('/')[1] || 'bin';
-
-            if (ext === 'jpeg') ext = 'jpg';
-            if (ext === 'quicktime') ext = 'mov';
-            if (ext === 'x-matroska') ext = 'mkv';
-            if (ext.includes(';')) ext = ext.split(';')[0];
-
-            const filename = `upload_${Date.now()}.${ext}`;
-
-            const formData = new FormData();
-
-            formData.append('file', buffer, {
-                filename,
-                contentType: mime
-            });
-
             const response = await axios.post(
                 'https://sam-cdn.zone.id/upload',
-                formData,
+                buffer,
                 {
                     headers: {
-                        ...formData.getHeaders(),
-                        'User-Agent': 'Rebix-Bot/1.0'
+                        'Content-Type': 'application/octet-stream'
                     },
                     maxContentLength: Infinity,
                     maxBodyLength: Infinity
@@ -82,11 +64,16 @@ module.exports = {
                     : upload?.url;
 
             if (!uploadUrl) {
-                throw new Error('Upload succeeded but no URL was returned');
+                throw new Error(
+                    'Upload succeeded but no URL was returned'
+                );
             }
 
-            const fileSizeKB = (buffer.length / 1024).toFixed(2);
-            const fileSizeMB = (buffer.length / (1024 * 1024)).toFixed(2);
+            const fileSizeKB =
+                (buffer.length / 1024).toFixed(2);
+
+            const fileSizeMB =
+                (buffer.length / (1024 * 1024)).toFixed(2);
 
             const result = `┏━━━━━━━━━━━━━━━━━━━━┓
 ┃ ᴜᴘʟᴏᴀᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟ

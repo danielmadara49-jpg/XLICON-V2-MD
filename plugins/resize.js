@@ -1,5 +1,5 @@
 const axios = require('axios');
-const sharp = require('sharp');
+const pix = require('pixcore');
 
 module.exports = {
     name: 'resize',
@@ -33,12 +33,9 @@ module.exports = {
 
             const imageBuffer = await m.quoted.download();
 
-            const resizedBuffer = await sharp(imageBuffer)
-                .resize(width, height, {
-                    fit: 'cover',
-                    position: 'center'
-                })
-                .toBuffer();
+            const img = await pix.read(imageBuffer);
+            const resized = await img.resize(width, height, { fit: 'cover' });
+            const resizedBuffer = await resized.toBuffer();
 
             await sock.sendMessage(chatId, {
                 image: resizedBuffer,

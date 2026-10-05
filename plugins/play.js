@@ -1,5 +1,5 @@
 const axios = require('axios');
-const sharp = require('sharp');
+const pix = require('pixcore');
 const yts = require('yt-search');
 
 module.exports = {
@@ -49,10 +49,9 @@ async execute(sock, m, args) {
         let thumb;
         try {
             const { data } = await axios.get(thumbUrl, { responseType: 'arraybuffer' });
-            thumb = await sharp(Buffer.from(data))
-                .resize(120, 120, { fit: 'cover', kernel: sharp.kernel.lanczos3 })
-                .jpeg({ quality: 85 })
-                .toBuffer();
+            const img = await pix.read(Buffer.from(data));
+            const resized = await img.resize(120, 120, { fit: 'cover' });
+            thumb = await resized.toBuffer({ format: 'jpeg', quality: 85 });
         } catch {
             thumb = null;
         }
